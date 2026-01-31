@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import json
+import subprocess
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
@@ -24,6 +25,65 @@ st.markdown("---")
 # ===============================
 # LOGIC
 # ===============================
+def download_instagram_video(insta_url):
+    """Download Instagram video using yt-dlp"""
+    
+    # Delete old video if exists
+    if os.path.exists("video.mp4"):
+        try:
+            os.remove("video.mp4")
+            st.info("🗑️ Removed old video...")
+        except:
+            pass
+    
+    st.info("⬇️ Downloading video from Instagram...")
+    
+    try:
+        # Use yt-dlp with best settings
+        command = [
+            "yt-dlp",
+            "--no-check-certificates",
+            "--no-warnings",
+            "-f", "best",
+            "--merge-output-format", "mp4",
+            "-o", "video.mp4",
+            insta_url
+        ]
+        
+        # Run command
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        # Check if download succeeded
+        if result.returncode == 0 and os.path.exists("video.mp4"):
+            file_size = os.path.getsize("video.mp4")
+            if file_size > 0:
+                size_mb = file_size / (1024 * 1024)
+                st.success(f"✅ Video downloaded! ({size_mb:.2f} MB)")
+                return True
+            else:
+                st.error("❌ Downloaded file is empty")
+                return False
+        else:
+            st.error("❌ Download failed!")
+            st.warning("Instagram may be blocking downloads from this server")
+            
+            with st.expander("🔍 See error details"):
+                st.code(result.stderr, language="text")
+            
+            return False
+            
+    except subprocess.TimeoutExpired:
+        st.error("❌ Download timed out")
+        return False
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        return False
+
 def get_authenticated_service():
     if "google_token" in st.secrets and "token_json" in st.secrets["google_token"]:
         try:
@@ -115,23 +175,25 @@ def upload_to_youtube(video_title, video_path="video.mp4"):
 # UI
 # ===============================
 
-st.markdown("### 📤 Upload Instagram Reel to YouTube Shorts")
+st.markdown("### � Paste Instagram Link")
 
 st.info("""
 **How to use:**
-1. Download Instagram reel using [SnapInsta](https://snapinsta.app) or [SaveFrom](https://en.savefrom.net/)
-2. Upload the video file below
+1. Copy Instagram Reel link
+2. Paste it below
 3. Enter YouTube title
-4. Click "Upload to YouTube Shorts"
+4. Click "Run Automation"
 """)
+
+st.warning("⚠️ **Note:** This works best when running locally. On Streamlit Cloud, Instagram may block downloads.")
 
 st.markdown("---")
 
-# File uploader
-uploaded_file = st.file_uploader(
-    "📁 Choose video file", 
-    type=['mp4', 'mov', 'avi', 'mkv'],
-    help="Upload the Instagram reel you downloaded"
+# Instagram link input
+insta_link = st.text_input(
+    "🔗 Instagram Reel Link", 
+    placeholder="https://www.instagram.com/reel/...",
+    help="Paste the Instagram reel URL here"
 )
 
 # Title input
@@ -141,41 +203,78 @@ video_title = st.text_input(
     help="Enter a catchy title for your Short"
 )
 
-# Show file info if uploaded
-if uploaded_file:
-    file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-    st.success(f"✅ File ready: {uploaded_file.name} ({file_size:.2f} MB)")
-    
-    # Show video preview
-    st.video(uploaded_file)
-
 st.markdown("---")
 
 # Upload button
-if st.button("� Upload to YouTube Shorts", type="primary", use_container_width=True):
-    if uploaded_file and video_title:
+if st.button("🚀 Run Automation", type="primary", use_container_width=True):
+    if insta_link and video_title:
+        if "instagram.com" not in insta_link:
+            st.error("❌ Please enter a valid Instagram link!")
+        else:
+            # Download video
+            with st.spinner("Downloading from Instagram..."):
+                download_success = download_instagram_video(insta_link)
+            
+            # Upload if download succeeded
+            if download_success:
+                with st.spinner("Uploading to YouTube..."):
+                    upload_to_youtube(video_title)
+            else:
+                st.error("❌ Cannot upload - download failed!")
+                st.info("💡 **Alternative:** Download the reel manually and use the file upload option below")
+    else:
+        st.warning("⚠️ Please fill in both fields!")
+
+st.markdown("---")
+st.markdown("### OR")
+st.markdown("---")
+
+# Alternative: File upload
+st.markdown("### 📤 Upload Video File (Alternative)")
+st.info("If Instagram link doesn't work, download the reel manually and upload here")
+
+uploaded_file = st.file_uploader(
+    "📁 Choose video file", 
+    type=['mp4', 'mov', 'avi', 'mkv'],
+    help="Upload the Instagram reel you downloaded"
+)
+
+video_title_upload = st.text_input(
+    "📝 YouTube Title", 
+    placeholder="My Awesome Short",
+    key="title_upload",
+    help="Enter a catchy title for your Short"
+)
+
+if uploaded_file:
+    file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
+    st.success(f"✅ File ready: {uploaded_file.name} ({file_size:.2f} MB)")
+
+if st.button("🚀 Upload File to YouTube", type="secondary", use_container_width=True):
+    if uploaded_file and video_title_upload:
         # Save uploaded file
         with open("video.mp4", "wb") as f:
             f.write(uploaded_file.getbuffer())
         
         # Upload to YouTube
         with st.spinner("Uploading to YouTube..."):
-            upload_to_youtube(video_title)
+            upload_to_youtube(video_title_upload)
     else:
         st.warning("⚠️ Please upload a video and enter a title")
 
 st.markdown("---")
 
 # Quick download links
-st.markdown("### 📱 Quick Download Links")
+st.markdown("### 📱 Manual Download Links")
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown("[![SnapInsta](https://img.shields.io/badge/SnapInsta-Download-red)](https://snapinsta.app)")
+    st.markdown("[SnapInsta](https://snapinsta.app)")
 with col2:
-    st.markdown("[![SaveFrom](https://img.shields.io/badge/SaveFrom-Download-blue)](https://en.savefrom.net/)")
+    st.markdown("[SaveFrom](https://en.savefrom.net/)")
 with col3:
-    st.markdown("[![InstaDownloader](https://img.shields.io/badge/InstaDownloader-Download-green)](https://instadownloader.net/)")
+    st.markdown("[InstaDownloader](https://instadownloader.net/)")
 
 st.markdown("---")
 st.caption("Made with ❤️ | Instagram to YouTube Shorts Automation")
 st.caption("✨ Automatically optimized for YouTube Shorts")
+st.caption("💡 For best results, run locally with: `streamlit run app.py`")
