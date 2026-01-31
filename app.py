@@ -28,23 +28,45 @@ def download_video(insta_url):
     if os.path.exists("video.mp4"):
         try:
             os.remove("video.mp4")
-            st.info("Removed old video...")
+            st.info("🗑️ Removed old video...")
         except:
             pass
     
-    st.info("Downloading new video...")
+    st.info("⬇️ Downloading video from Instagram...")
+    
+    # Use yt-dlp with best settings for Instagram
     result = subprocess.run([
         "yt-dlp",
-        "-f", "mp4",
+        "--no-check-certificates",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "-f", "best",
+        "--merge-output-format", "mp4",
         "-o", "video.mp4",
         insta_url
     ], capture_output=True, text=True)
     
-    if result.returncode == 0:
-        st.success("Video downloaded!")
-        return True
+    # Check if download succeeded
+    if result.returncode == 0 and os.path.exists("video.mp4"):
+        file_size = os.path.getsize("video.mp4")
+        if file_size > 0:
+            st.success(f"✅ Video downloaded! ({file_size / (1024*1024):.2f} MB)")
+            return True
+        else:
+            st.error("❌ Downloaded file is empty")
+            return False
     else:
-        st.error(f"Download failed: {result.stderr}")
+        st.error("❌ Download failed!")
+        
+        # Show helpful error message
+        if "login" in result.stderr.lower() or "rate" in result.stderr.lower():
+            st.warning("⚠️ Instagram is blocking the download. Try:")
+            st.info("1. Make sure the Instagram reel is PUBLIC (not private)")
+            st.info("2. Try a different Instagram link")
+            st.info("3. Wait a few minutes and try again (rate limit)")
+        
+        with st.expander("🔍 See error details"):
+            st.code(result.stderr, language="text")
+        
         return False
 
 def get_authenticated_service():
@@ -98,8 +120,14 @@ def upload_to_youtube(video_title):
     if not youtube:
         return False
 
-    st.info("Uploading to YouTube...")
+    st.info("⬆️ Uploading to YouTube...")
+    
     try:
+        # Check if video file exists
+        if not os.path.exists("video.mp4"):
+            st.error("❌ Video file not found!")
+            return False
+        
         request = youtube.videos().insert(
             part="snippet,status",
             body={
@@ -114,38 +142,60 @@ def upload_to_youtube(video_title):
             },
             media_body=MediaFileUpload("video.mp4", resumable=True)
         )
+        
         response = request.execute()
         st.balloons()
         st.success(f"✅ Upload Complete: {video_title}")
-        st.json(response)
+        
+        # Show YouTube link
+        video_id = response.get("id")
+        if video_id:
+            youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+            st.success(f"🎥 [Watch on YouTube]({youtube_url})")
+        
+        with st.expander("📊 See upload details"):
+            st.json(response)
         
         # Clean up the video file after successful upload
         try:
             os.remove("video.mp4")
-            st.info("Cleaned up video file.")
+            st.info("🧹 Cleaned up video file.")
         except:
             pass
         
         return True
     except Exception as e:
-        st.error(f"Upload failed: {e}")
+        st.error(f"❌ Upload failed: {e}")
         return False
 
 # ===============================
 # UI
 # ===============================
-insta_link = st.text_input("🔗 Paste Instagram Reel link")
-video_title_input = st.text_input("📝 Enter YouTube title")
+st.markdown("---")
+st.markdown("### 📝 Instructions")
+st.info("1. Paste Instagram Reel link\n2. Enter YouTube title\n3. Click 'Run Automation'")
 
-if st.button("🚀 Run Automation"):
+insta_link = st.text_input("🔗 Paste Instagram Reel link", placeholder="https://www.instagram.com/reel/...")
+video_title_input = st.text_input("📝 Enter YouTube title", placeholder="My Awesome Short")
+
+if st.button("🚀 Run Automation", type="primary"):
     if insta_link and video_title_input:
-        # Download video first
-        download_success = download_video(insta_link)
-        
-        # Only upload if download was successful
-        if download_success:
-            upload_to_youtube(video_title_input)
+        # Validate Instagram URL
+        if "instagram.com" not in insta_link:
+            st.error("❌ Please enter a valid Instagram link!")
         else:
-            st.error("Cannot upload - download failed!")
+            # Download video first
+            with st.spinner("Downloading..."):
+                download_success = download_video(insta_link)
+            
+            # Only upload if download was successful
+            if download_success:
+                with st.spinner("Uploading to YouTube..."):
+                    upload_to_youtube(video_title_input)
+            else:
+                st.error("❌ Cannot upload - download failed!")
     else:
-        st.warning("Please fill in both fields!")
+        st.warning("⚠️ Please fill in both fields!")
+
+st.markdown("---")
+st.caption("Made with ❤️ | Instagram to YouTube Automation")
