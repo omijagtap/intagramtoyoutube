@@ -73,6 +73,10 @@ def download_video(insta_url):
 def upload_to_youtube(video_title):
     print("⬆️ Uploading to YouTube...")
     
+    # Add #Shorts to title if not already there
+    if "#shorts" not in video_title.lower():
+        video_title = video_title + " #Shorts"
+    
     flow = InstalledAppFlow.from_client_secrets_file(
         "client_secret.json",
         ["https://www.googleapis.com/auth/youtube.upload"]
@@ -87,10 +91,12 @@ def upload_to_youtube(video_title):
             "snippet": {
                 "title": video_title,
                 "description": STATIC_DESCRIPTION,
-                "categoryId": "22"
+                "categoryId": "22",
+                "tags": ["Shorts", "Short", "Vertical Video"]
             },
             "status": {
-                "privacyStatus": "public"
+                "privacyStatus": "public",
+                "selfDeclaredMadeForKids": False
             }
         },
         media_body=MediaFileUpload("video.mp4", resumable=True)

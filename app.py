@@ -133,6 +133,10 @@ def upload_to_youtube(video_title, video_path="video.mp4"):
 
     st.info("⬆️ Uploading to YouTube...")
     
+    # Add #Shorts to title if not already there
+    if "#shorts" not in video_title.lower():
+        video_title = video_title + " #Shorts"
+    
     try:
         if not os.path.exists(video_path):
             st.error("❌ Video file not found!")
@@ -144,10 +148,12 @@ def upload_to_youtube(video_title, video_path="video.mp4"):
                 "snippet": {
                     "title": video_title,
                     "description": STATIC_DESCRIPTION,
-                    "categoryId": "22"
+                    "categoryId": "22",
+                    "tags": ["Shorts", "Short", "Vertical Video"]
                 },
                 "status": {
-                    "privacyStatus": "public"
+                    "privacyStatus": "public",
+                    "selfDeclaredMadeForKids": False
                 }
             },
             media_body=MediaFileUpload(video_path, resumable=True, chunksize=1024*1024)
