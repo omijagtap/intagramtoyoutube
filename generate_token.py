@@ -2,11 +2,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import os
 
 def main():
-    print("🚀 Opening browser to login to Google/YouTube...")
+    print("Opening browser to login to Google/YouTube...")
     
     # Check for secret file
     if not os.path.exists("client_secret.json"):
-        print("❌ Error: client_secret.json missing!")
+        print("ERROR: client_secret.json missing!")
         return
 
     # Run the login flow locally
@@ -16,9 +16,15 @@ def main():
     )
     
     # This opens the browser
-    creds = flow.run_local_server(port=0)
+    # We use port 8080 which is commonly allowed. 
+    # If this fails with "Address already in use", you can try port=0
+    try:
+        creds = flow.run_local_server(port=8080, open_browser=True)
+    except Exception as e:
+        print(f"Server failed on 8080, trying random port... Error: {e}")
+        creds = flow.run_local_server(port=0, open_browser=True)
     
-    print("\n\n✅ AUTHENTICATION SUCCESSFUL!")
+    print("\n\n=== AUTHENTICATION SUCCESSFUL! ===")
     print("="*50)
     print("COPY THE TEXT BELOW AND PASTE INTO STREAMLIT SECRETS:")
     print("="*50)
