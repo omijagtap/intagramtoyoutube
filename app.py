@@ -34,16 +34,30 @@ def download_video(insta_url):
     st.success("Video downloaded!")
 
 def get_authenticated_service():
-    # 1. Try to load from existing token.json (local usage)
+    # 1. Try to load from Streamlit Secrets (Best for Cloud)
+    if "google_token" in st.secrets and "token_json" in st.secrets["google_token"]:
+        try:
+            token_info = json.loads(st.secrets["google_token"]["token_json"])
+            creds = Credentials.from_authorized_user_info(token_info, ["https://www.googleapis.com/auth/youtube.upload"])
+            
+            # Refresh if needed
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            
+            return build("youtube", "v3", credentials=creds)
+        except Exception as e:
+            st.warning(f"Secret token failed: {e}")
+
+    # 2. Try to load from existing token.json (local usage)
     creds = None
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", ["https://www.googleapis.com/auth/youtube.upload"])
     
-    # 2. If valid, return it
+    # 3. If valid, return it
     if creds and creds.valid:
         return build("youtube", "v3", credentials=creds)
         
-    # 3. If expired, try to refresh
+    # 4. If expired, try to refresh
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
@@ -54,50 +68,16 @@ def get_authenticated_service():
         except:
             st.warning("Token expired and refresh failed. Please re-authenticate.")
 
-    # 4. If no token, we need to authenticate
-    st.info("Authentication Required")
+    # 5. Fail gracefully with instructions
+    st.error("🔒 Authentication Required!")
+    st.info("""
+    **Google prevents logging in directly from this cloud app.**
     
-    # Load client config from Secrets or File
-    client_config = None
-    if os.path.exists("client_secret.json"):
-        flow = InstalledAppFlow.from_client_secrets_file(
-            "client_secret.json",
-            ["https://www.googleapis.com/auth/youtube.upload"]
-        )
-    elif "google_auth" in st.secrets:
-        client_config = {"installed": dict(st.secrets["google_auth"])}
-        flow = InstalledAppFlow.from_client_config(
-            client_config,
-            ["https://www.googleapis.com/auth/youtube.upload"]
-        )
-    else:
-        st.error("❌ No secrets found! Please add [google_auth] to Streamlit Secrets.")
-        return None
-
-    # Use run_local_server if likely local, else use manual code input
-    # Since we can't easily detect "Cloud" vs "Local" reliably, we can offer the manual link method in the UI
-    
-    flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob" 
-    auth_url, _ = flow.authorization_url(prompt='consent')
-    
-    st.markdown(f"**[Click this link to authorize]({auth_url})**")
-    auth_code = st.text_input("Paste the authorization code here:")
-    
-    if auth_code:
-        try:
-            flow.fetch_token(code=auth_code)
-            creds = flow.credentials
-            # Save for next time (persistence is tricky on cloud, but helps for session)
-            # On Streamlit Cloud, file writes are ephemeral, but this works for the current session.
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-            return build("youtube", "v3", credentials=creds)
-        except Exception as e:
-            st.error(f"Authentication failed: {e}")
-            return None
-    else:
-        st.warning("Waiting for authentication code...")
-        return None
+    1. Run `python generate_token.py` on your computer.
+    2. Login and copy the generated Code.
+    3. Paste it into your Streamlit Secrets.
+    """)
+    return None
 
 def upload_to_youtube(video_title):
     youtube = get_authenticated_service()
