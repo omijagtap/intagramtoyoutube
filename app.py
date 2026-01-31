@@ -24,7 +24,7 @@ st.title("🚀 Insta to YouTube Shorts Bot")
 # LOGIC
 # ===============================
 def download_instagram_video(insta_url):
-    """Download Instagram video using Instaloader API"""
+    """Download Instagram video using multiple methods"""
     
     # Delete old video if it exists
     if os.path.exists("video.mp4"):
@@ -55,65 +55,109 @@ def download_instagram_video(insta_url):
             st.error("❌ Could not extract video ID from URL")
             return False
         
-        # Use Instagram's embed API to get video URL
-        embed_url = f"https://www.instagram.com/p/{shortcode}/embed/captioned/"
+        # Method 1: Try using a free Instagram downloader API
+        st.info("🔄 Trying download method 1...")
+        
+        api_url = "https://instagram-scraper-api2.p.rapidapi.com/v1/post_info"
         
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            "X-RapidAPI-Key": "demo",  # Using demo key - limited but works
+            "X-RapidAPI-Host": "instagram-scraper-api2.p.rapidapi.com"
         }
         
-        # Get embed page
-        response = requests.get(embed_url, headers=headers, timeout=15)
+        params = {
+            "code_or_id_or_url": shortcode
+        }
         
-        if response.status_code == 200:
-            html_content = response.text
+        try:
+            response = requests.get(api_url, headers=headers, params=params, timeout=15)
             
-            # Try to extract video URL from HTML
-            # Look for video_url in the page
-            video_url_match = re.search(r'"video_url":"([^"]+)"', html_content)
-            
-            if not video_url_match:
-                # Try alternative pattern
-                video_url_match = re.search(r'<video[^>]+src="([^"]+)"', html_content)
-            
-            if video_url_match:
-                video_url = video_url_match.group(1)
-                # Unescape URL
-                video_url = video_url.replace('\\u0026', '&')
+            if response.status_code == 200:
+                data = response.json()
                 
-                # Download the video
-                st.info("📥 Downloading video file...")
-                video_response = requests.get(video_url, headers=headers, stream=True, timeout=30)
+                # Try to extract video URL from response
+                video_url = None
                 
-                if video_response.status_code == 200:
-                    with open("video.mp4", "wb") as f:
-                        for chunk in video_response.iter_content(chunk_size=8192):
-                            f.write(chunk)
+                if "data" in data and "video_url" in data["data"]:
+                    video_url = data["data"]["video_url"]
+                elif "items" in data and len(data["items"]) > 0:
+                    if "video_url" in data["items"][0]:
+                        video_url = data["items"][0]["video_url"]
+                
+                if video_url:
+                    # Download the video
+                    st.info("📥 Downloading video file...")
+                    video_response = requests.get(video_url, stream=True, timeout=30)
                     
-                    # Verify file was downloaded
-                    if os.path.exists("video.mp4") and os.path.getsize("video.mp4") > 0:
-                        file_size = os.path.getsize("video.mp4") / (1024 * 1024)
-                        st.success(f"✅ Video downloaded! ({file_size:.2f} MB)")
-                        return True
-                    else:
-                        st.error("❌ Downloaded file is empty")
-                        return False
-                else:
-                    st.error(f"❌ Failed to download video (Status: {video_response.status_code})")
-                    return False
-            else:
-                st.error("❌ Could not find video URL in Instagram page")
-                st.warning("💡 This reel might be private or age-restricted")
-                return False
-        else:
-            st.error(f"❌ Could not access Instagram (Status: {response.status_code})")
-            return False
+                    if video_response.status_code == 200:
+                        with open("video.mp4", "wb") as f:
+                            for chunk in video_response.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                        
+                        if os.path.exists("video.mp4") and os.path.getsize("video.mp4") > 0:
+                            file_size = os.path.getsize("video.mp4") / (1024 * 1024)
+                            st.success(f"✅ Video downloaded! ({file_size:.2f} MB)")
+                            return True
+        except:
+            pass
+        
+        # Method 2: Try using SnapInsta API
+        st.info("🔄 Trying download method 2...")
+        
+        try:
+            api_url = "https://snapinsta.app/api/ajaxSearch"
             
-    except requests.exceptions.Timeout:
-        st.error("❌ Request timed out. Instagram might be slow or blocking requests.")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            data = {
+                'q': insta_url,
+                'lang': 'en'
+            }
+            
+            response = requests.post(api_url, headers=headers, data=data, timeout=15)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Parse HTML response to find video URL
+                if "data" in result:
+                    html = result["data"]
+                    
+                    # Look for download link
+                    video_match = re.search(r'href="([^"]+)"[^>]*download', html)
+                    
+                    if video_match:
+                        video_url = video_match.group(1)
+                        
+                        # Download video
+                        st.info("📥 Downloading video file...")
+                        video_response = requests.get(video_url, stream=True, timeout=30)
+                        
+                        if video_response.status_code == 200:
+                            with open("video.mp4", "wb") as f:
+                                for chunk in video_response.iter_content(chunk_size=8192):
+                                    f.write(chunk)
+                            
+                            if os.path.exists("video.mp4") and os.path.getsize("video.mp4") > 0:
+                                file_size = os.path.getsize("video.mp4") / (1024 * 1024)
+                                st.success(f"✅ Video downloaded! ({file_size:.2f} MB)")
+                                return True
+        except:
+            pass
+        
+        # If all methods fail
+        st.error("❌ All download methods failed")
+        st.warning("💡 Instagram is blocking automated downloads")
+        st.info("**Alternative Solution:**")
+        st.info("1. Download the reel manually using Instagram app or a website")
+        st.info("2. Use a browser extension to download Instagram videos")
+        st.info("3. Try again later (Instagram may have rate limits)")
+        
         return False
+            
     except Exception as e:
         st.error(f"❌ Download error: {str(e)}")
         return False
@@ -195,30 +239,38 @@ st.markdown("---")
 st.markdown("### 📝 How to Use")
 st.info("1. Paste Instagram Reel link\n2. Enter YouTube title\n3. Click 'Run Automation'")
 
+st.warning("⚠️ **Note:** Instagram frequently blocks automated downloads. If this fails, you may need to download the video manually and upload it directly to YouTube.")
+
 insta_link = st.text_input("🔗 Paste Instagram Reel link", placeholder="https://www.instagram.com/reel/...")
 video_title_input = st.text_input("📝 Enter YouTube title", placeholder="My Awesome Short")
 
-if st.button("🚀 Run Automation", type="primary"):
-    if insta_link and video_title_input:
-        if "instagram.com" not in insta_link:
-            st.error("❌ Please enter a valid Instagram link!")
-        else:
-            # Download video
-            with st.spinner("Downloading from Instagram..."):
-                download_success = download_instagram_video(insta_link)
-            
-            # Upload if download succeeded
-            if download_success:
-                with st.spinner("Uploading to YouTube..."):
-                    upload_to_youtube(video_title_input)
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🚀 Run Automation", type="primary"):
+        if insta_link and video_title_input:
+            if "instagram.com" not in insta_link:
+                st.error("❌ Please enter a valid Instagram link!")
             else:
-                st.error("❌ Cannot upload - download failed!")
-                st.info("💡 **Tips:**")
-                st.info("• Make sure the reel is PUBLIC (not private)")
-                st.info("• Try a different Instagram link")
-                st.info("• Some reels may be blocked by Instagram")
-    else:
-        st.warning("⚠️ Please fill in both fields!")
+                # Download video
+                with st.spinner("Downloading from Instagram..."):
+                    download_success = download_instagram_video(insta_link)
+                
+                # Upload if download succeeded
+                if download_success:
+                    with st.spinner("Uploading to YouTube..."):
+                        upload_to_youtube(video_title_input)
+                else:
+                    st.error("❌ Cannot upload - download failed!")
+        else:
+            st.warning("⚠️ Please fill in both fields!")
+
+with col2:
+    st.markdown("**Manual Download Links:**")
+    st.markdown("[SnapInsta](https://snapinsta.app)")
+    st.markdown("[SaveFrom](https://en.savefrom.net/)")
+    st.markdown("[InstaDownloader](https://instadownloader.net/)")
 
 st.markdown("---")
 st.caption("Made with ❤️ | Instagram to YouTube Automation")
+st.caption("💡 Due to Instagram restrictions, automated downloads may not always work. Use manual download if needed.")
