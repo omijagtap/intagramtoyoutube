@@ -26,7 +26,7 @@ st.markdown("---")
 # LOGIC
 # ===============================
 def download_instagram_video(insta_url):
-    """Download Instagram video using yt-dlp"""
+    """Download Instagram video using yt-dlp with cookie support"""
     
     # Delete old video if exists
     if os.path.exists("video.mp4"):
@@ -39,24 +39,40 @@ def download_instagram_video(insta_url):
     st.info("⬇️ Downloading video from Instagram...")
     
     try:
-        # Use yt-dlp with best settings
-        command = [
+        # Method 1: Try with Chrome cookies (works best for Instagram)
+        st.info("🔄 Trying with Chrome cookies...")
+        result = subprocess.run([
             "yt-dlp",
-            "--no-check-certificates",
-            "--no-warnings",
+            "--cookies-from-browser", "chrome",
             "-f", "best",
             "--merge-output-format", "mp4",
             "-o", "video.mp4",
             insta_url
-        ]
+        ], capture_output=True, text=True, timeout=60)
         
-        # Run command
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        # Method 2: If Chrome fails, try Firefox
+        if result.returncode != 0:
+            st.info("🔄 Trying with Firefox cookies...")
+            result = subprocess.run([
+                "yt-dlp",
+                "--cookies-from-browser", "firefox",
+                "-f", "best",
+                "--merge-output-format", "mp4",
+                "-o", "video.mp4",
+                insta_url
+            ], capture_output=True, text=True, timeout=60)
+        
+        # Method 3: If both fail, try without cookies (may work for public videos)
+        if result.returncode != 0:
+            st.info("🔄 Trying without cookies...")
+            result = subprocess.run([
+                "yt-dlp",
+                "--no-check-certificates",
+                "-f", "best",
+                "--merge-output-format", "mp4",
+                "-o", "video.mp4",
+                insta_url
+            ], capture_output=True, text=True, timeout=60)
         
         # Check if download succeeded
         if result.returncode == 0 and os.path.exists("video.mp4"):
@@ -69,8 +85,11 @@ def download_instagram_video(insta_url):
                 st.error("❌ Downloaded file is empty")
                 return False
         else:
-            st.error("❌ Download failed!")
-            st.warning("Instagram may be blocking downloads from this server")
+            st.error("❌ All download methods failed!")
+            st.warning("⚠️ **Why this happens:**")
+            st.info("• Instagram blocks downloads from cloud servers")
+            st.info("• You need to be logged into Instagram in Chrome/Firefox")
+            st.info("• This works when running locally, not on Streamlit Cloud")
             
             with st.expander("🔍 See error details"):
                 st.code(result.stderr, language="text")
