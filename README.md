@@ -10,7 +10,6 @@ Automatically download Instagram Reels and upload them to YouTube as Shorts with
 - ✅ Upload to YouTube as Shorts (with #Shorts tag)
 - ✅ Auto-cleanup of video files
 - ✅ Progress tracking
-- ✅ Multiple download methods (Chrome/Firefox cookies)
 - ✅ Web interface (Streamlit) + Console version
 - ✅ Optimized for YouTube Shorts algorithm
 
@@ -18,12 +17,9 @@ Automatically download Instagram Reels and upload them to YouTube as Shorts with
 
 ## 📋 Prerequisites
 
-Before you start, make sure you have:
-
-1. **Python 3.8+** installed
-2. **Google Cloud Project** with YouTube Data API v3 enabled
-3. **Instagram account** (logged in Chrome or Firefox)
-4. **yt-dlp** installed
+- Python 3.8 or higher
+- Google account
+- Instagram account (logged in Chrome or Firefox)
 
 ---
 
@@ -42,46 +38,85 @@ cd intagramtoyoutube
 pip install -r requirements.txt
 ```
 
-### Step 3: Install yt-dlp
+---
 
-**Windows:**
-```bash
-pip install yt-dlp
+## 🔑 Setup Your Own YouTube API Credentials
+
+**IMPORTANT:** You need to create your own Google Cloud credentials. This is FREE and takes 5 minutes.
+
+### Step-by-Step Guide:
+
+#### 1. Go to Google Cloud Console
+
+Visit: [https://console.cloud.google.com/](https://console.cloud.google.com/)
+
+#### 2. Create a New Project
+
+- Click "Select a project" at the top
+- Click "New Project"
+- Enter project name: `Instagram-to-YouTube`
+- Click "Create"
+
+#### 3. Enable YouTube Data API v3
+
+- In the search bar, type: `YouTube Data API v3`
+- Click on it
+- Click "Enable"
+- Wait for it to activate
+
+#### 4. Create OAuth Credentials
+
+- Go to "Credentials" (left sidebar)
+- Click "Create Credentials" → "OAuth client ID"
+- If asked, configure consent screen:
+  - User Type: **External**
+  - App name: `Instagram to YouTube Bot`
+  - User support email: Your email
+  - Developer email: Your email
+  - Click "Save and Continue"
+  - Scopes: Skip (click "Save and Continue")
+  - Test users: Add your email
+  - Click "Save and Continue"
+
+#### 5. Create OAuth Client ID
+
+- Application type: **Desktop app**
+- Name: `Instagram to YouTube Desktop`
+- Click "Create"
+
+#### 6. Download Credentials
+
+- Click the **Download** icon (⬇️) next to your newly created credential
+- Save the file as `client_secret.json`
+- Move it to the project folder
+
+#### 7. Verify Setup
+
+Your project folder should now have:
 ```
-
-**Mac/Linux:**
-```bash
-pip install yt-dlp
+insta_to_youtube/
+├── main.py
+├── app.py
+├── client_secret.json  ← YOU JUST ADDED THIS
+├── requirements.txt
+└── README.md
 ```
-
-### Step 4: Set Up Google Cloud Credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project (or select existing)
-3. Enable **YouTube Data API v3**
-4. Create **OAuth 2.0 credentials** (Desktop app)
-5. Download the credentials as `client_secret.json`
-6. Place `client_secret.json` in the project folder
 
 ---
 
 ## 🎯 Usage
 
-You have **3 ways** to use this tool:
-
-### **Option 1: Console Version (Recommended for Instagram Links)**
-
-Simple command-line interface:
+### **Option 1: Console Version (Easiest)**
 
 ```bash
 python main.py
 ```
 
-**What it does:**
-1. Asks for Instagram Reel link
-2. Asks for YouTube title
-3. Downloads video (using your browser cookies)
-4. Uploads to YouTube as Short
+**What happens:**
+1. First time: Opens browser for Google login
+2. Asks for Instagram Reel link
+3. Asks for YouTube title
+4. Downloads and uploads automatically
 5. Shows YouTube link
 
 **Example:**
@@ -98,101 +133,46 @@ python main.py
 
 ---
 
-### **Option 2: Streamlit Web App (Local)**
-
-Beautiful web interface with Instagram link support:
+### **Option 2: Web Interface (Streamlit)**
 
 ```bash
 streamlit run app.py
 ```
 
-Then open your browser to: **http://localhost:8501**
+Then open: **http://localhost:8501**
 
 **Features:**
-- 🔗 Paste Instagram links directly
-- 📤 Or upload video files
+- 🔗 Paste Instagram links
+- 📤 Upload video files
 - 📊 Progress bars
 - 🎥 Video preview
-- 📱 Mobile-friendly
-
-**Best for:** When you want a nice UI and Instagram links
 
 ---
 
-### **Option 3: Streamlit Cloud (File Upload Only)**
+## � First-Time Authentication
 
-Deploy to Streamlit Cloud for access from anywhere:
+When you run the tool for the first time:
 
-1. Push code to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Deploy from your repository
-4. Add `google_token` to Secrets (see below)
+1. **Browser opens automatically**
+2. **Select your Google account**
+3. **Click "Continue"** (you may see a warning - this is normal for test apps)
+4. **Click "Continue"** again
+5. **Allow access** to YouTube
+6. **Done!** The tool is now authorized
 
-**Note:** Instagram links don't work on cloud (use file upload instead)
-
----
-
-## 🔐 Authentication Setup
-
-### For Local Use (main.py and local Streamlit):
-
-Just run the script - it will open a browser for Google login on first use.
-
-### For Streamlit Cloud:
-
-1. **Generate token locally:**
-   ```bash
-   python generate_token.py
-   ```
-
-2. **Copy the output** (it will look like this):
-   ```
-   token_json = '{"token": "...", "refresh_token": "...", ...}'
-   ```
-
-3. **Add to Streamlit Secrets:**
-   - Go to your app settings on Streamlit Cloud
-   - Click "Secrets"
-   - Add:
-   ```toml
-   [google_token]
-   token_json = '{"token": "...", "refresh_token": "...", ...}'
-   ```
+The credentials are saved locally, so you only do this once.
 
 ---
 
-## 📁 Project Structure
+## � Troubleshooting
 
-```
-insta_to_youtube/
-├── main.py                 # Console version (Instagram links work)
-├── app.py                  # Streamlit web app
-├── generate_token.py       # Generate auth token for cloud
-├── requirements.txt        # Python dependencies
-├── client_secret.json      # Google OAuth credentials (YOU ADD THIS)
-├── .gitignore             # Excludes sensitive files
-└── README.md              # This file
-```
+### "client_secret.json not found"
+
+**Problem:** You haven't created Google credentials yet
+
+**Solution:** Follow the "Setup Your Own YouTube API Credentials" section above
 
 ---
-
-## 🎬 How It Works
-
-### Download Process:
-1. **Tries Chrome cookies** - Uses your Instagram login from Chrome
-2. **Tries Firefox cookies** - Falls back to Firefox if Chrome fails
-3. **Tries without cookies** - Last resort for public videos
-
-### Upload Process:
-1. **Adds #Shorts tag** - Automatically appends if not in title
-2. **Sets metadata** - Category: People & Blogs, Tags: Shorts, etc.
-3. **Marks as Short** - Proper settings for YouTube Shorts
-4. **Uploads video** - With progress tracking
-5. **Returns link** - Direct YouTube and Shorts URLs
-
----
-
-## 🔧 Troubleshooting
 
 ### "Download failed" Error
 
@@ -200,18 +180,23 @@ insta_to_youtube/
 
 **Solutions:**
 1. Make sure you're logged into Instagram in Chrome or Firefox
-2. Try running locally (not on cloud)
-3. Use file upload instead of Instagram link
-4. Download manually from [SnapInsta.app](https://snapinsta.app)
+2. Try a different Instagram link
+3. Download manually from [SnapInsta.app](https://snapinsta.app) and use file upload
 
-### "Authentication Required" Error
+---
 
-**Problem:** Google credentials not set up
+### "This app isn't verified" Warning
 
-**Solutions:**
-1. Make sure `client_secret.json` is in the project folder
-2. For cloud: Add `google_token` to Streamlit Secrets
-3. Run `python generate_token.py` to generate token
+**Problem:** Google shows a warning during first login
+
+**Solution:** This is normal for personal projects. Click:
+1. "Advanced"
+2. "Go to [Your App Name] (unsafe)"
+3. "Allow"
+
+This is YOUR app, so it's safe.
+
+---
 
 ### "yt-dlp not found" Error
 
@@ -222,79 +207,45 @@ insta_to_youtube/
 pip install yt-dlp
 ```
 
-### Video Not Appearing as Short
-
-**Problem:** Video doesn't show in Shorts feed
-
-**Reasons:**
-- Video must be vertical (9:16 ratio) ✅ Instagram reels are
-- Video must be under 60 seconds ✅ Most reels are
-- Must have #Shorts tag ✅ Auto-added
-- May take a few hours to appear in Shorts feed
-
 ---
 
-## 📱 Quick Start Guide
+## 📱 How to Use (Step by Step)
 
 ### For Beginners:
 
 1. **Install Python** from [python.org](https://python.org)
 
 2. **Download this project:**
-   - Click "Code" → "Download ZIP"
-   - Extract to a folder
+   ```bash
+   git clone https://github.com/omijagtap/intagramtoyoutube.git
+   cd intagramtoyoutube
+   ```
 
 3. **Install requirements:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Get Google credentials:**
-   - Follow "Step 4" in Installation section
-   - Save as `client_secret.json`
+4. **Create Google credentials:**
+   - Follow the "Setup Your Own YouTube API Credentials" section
+   - Download `client_secret.json` to this folder
 
 5. **Run the tool:**
    ```bash
    python main.py
    ```
 
-6. **Paste Instagram link and title**
+6. **First time:** Browser opens for Google login
 
-7. **Done!** Video uploads to YouTube
+7. **Paste Instagram link and title**
 
----
-
-## 🌐 Deployment to Streamlit Cloud
-
-1. **Push to GitHub:**
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
-   ```
-
-2. **Deploy on Streamlit:**
-   - Go to [share.streamlit.io](https://share.streamlit.io)
-   - Click "New app"
-   - Select your repository
-   - Set main file: `app.py`
-   - Deploy!
-
-3. **Add Secrets:**
-   - Run `python generate_token.py` locally
-   - Copy the output
-   - Add to Streamlit Secrets
-
-4. **Use the app:**
-   - Upload video files (Instagram links won't work on cloud)
-   - Enter title
-   - Upload to YouTube
+8. **Done!** Video uploads to YouTube
 
 ---
 
 ## 🎨 Customization
 
-### Change Video Description:
+### Change Video Description
 
 Edit `STATIC_DESCRIPTION` in `main.py` or `app.py`:
 
@@ -306,92 +257,108 @@ Your custom description here!
 """
 ```
 
-### Change Privacy Setting:
+### Change Privacy Setting
 
-In the upload function, change:
 ```python
 "privacyStatus": "public"  # Options: public, private, unlisted
 ```
 
-### Change Category:
-
-```python
-"categoryId": "22"  # 22 = People & Blogs
-# Other options: 10 = Music, 24 = Entertainment, etc.
-```
-
 ---
 
-## 📊 Comparison: Which Version to Use?
+## 📊 Which Version to Use?
 
-| Feature | Console (`main.py`) | Local Streamlit | Cloud Streamlit |
-|---------|---------------------|-----------------|-----------------|
-| Instagram Links | ✅ Yes | ✅ Yes | ❌ No |
-| File Upload | ❌ No | ✅ Yes | ✅ Yes |
-| Web Interface | ❌ No | ✅ Yes | ✅ Yes |
-| Access from Phone | ❌ No | ⚠️ Same WiFi | ✅ Anywhere |
-| Setup Difficulty | ⭐ Easy | ⭐⭐ Medium | ⭐⭐⭐ Hard |
-| Best For | Quick uploads | Best UI | Remote access |
-
----
-
-## 🤝 Contributing
-
-Feel free to:
-- Report bugs
-- Suggest features
-- Submit pull requests
+| Feature | Console (`main.py`) | Streamlit (`app.py`) |
+|---------|---------------------|----------------------|
+| Instagram Links | ✅ Yes | ✅ Yes (local only) |
+| File Upload | ❌ No | ✅ Yes |
+| Web Interface | ❌ No | ✅ Yes |
+| Ease of Use | ⭐⭐⭐ Easy | ⭐⭐⭐⭐ Very Easy |
 
 ---
 
 ## ⚠️ Important Notes
 
-1. **Instagram Terms:** Respect Instagram's terms of service. Only download content you have rights to.
+1. **Your Credentials:** Each user must create their own `client_secret.json`. Don't share yours!
 
-2. **YouTube Guidelines:** Make sure you have rights to upload the content to YouTube.
+2. **Instagram Terms:** Only download content you have rights to use.
 
-3. **Rate Limits:** Instagram may rate-limit downloads. If blocked, wait a few minutes.
+3. **YouTube Guidelines:** Make sure you have permission to upload the content.
 
-4. **Copyright:** Only upload content you own or have permission to use.
-
----
-
-## 📝 License
-
-This project is for educational purposes. Use responsibly and respect platform terms of service.
+4. **Rate Limits:** YouTube API has daily quotas. For personal use, this is plenty.
 
 ---
 
-## 💡 Tips for Best Results
+## 🆘 Need Help?
+
+### Common Issues:
+
+**Q: Where do I get `client_secret.json`?**  
+A: Follow the "Setup Your Own YouTube API Credentials" section. You create it yourself from Google Cloud Console.
+
+**Q: Can I use someone else's credentials?**  
+A: No, each person needs their own. It's free and takes 5 minutes to set up.
+
+**Q: Instagram download fails?**  
+A: Make sure you're logged into Instagram in your browser (Chrome or Firefox).
+
+**Q: "This app isn't verified" warning?**  
+A: Normal for personal projects. Click "Advanced" → "Go to app (unsafe)" → "Allow"
+
+---
+
+## 💡 Tips for Success
 
 1. **Use vertical videos** - Instagram Reels are already vertical ✅
 2. **Keep under 60 seconds** - YouTube Shorts requirement
-3. **Add engaging titles** - Include keywords and emojis
+3. **Add engaging titles** - Include keywords
 4. **Use #Shorts tag** - Auto-added by this tool
-5. **Upload consistently** - YouTube algorithm loves consistency
+5. **Upload consistently** - Algorithm loves consistency
 
 ---
 
-## 🆘 Support
+## � You're Ready!
 
-If you encounter issues:
+Once you have `client_secret.json` in the folder:
 
-1. Check the Troubleshooting section above
-2. Make sure all dependencies are installed
-3. Verify you're logged into Instagram (for link downloads)
-4. Check that `client_secret.json` is in the folder
+```bash
+python main.py
+```
 
----
-
-## 🎉 Success!
-
-Once everything is set up, you can:
-- Upload Instagram Reels to YouTube in seconds
-- Automate your content workflow
-- Grow your YouTube Shorts channel
-
-**Happy uploading!** 🚀
+That's it! Start uploading Instagram Reels to YouTube Shorts! 🚀
 
 ---
 
-Made with ❤️ by Omkar Jagtap
+## 📝 Project Structure
+
+```
+insta_to_youtube/
+├── main.py                 # Console version
+├── app.py                  # Streamlit web app
+├── generate_token.py       # For Streamlit Cloud deployment
+├── requirements.txt        # Dependencies
+├── client_secret.json      # YOUR Google credentials (create this)
+├── .gitignore             # Excludes sensitive files
+└── README.md              # This file
+```
+
+---
+
+## � Deploy to Streamlit Cloud (Optional)
+
+If you want to access from anywhere:
+
+1. **Generate token locally:**
+   ```bash
+   python generate_token.py
+   ```
+
+2. **Deploy on Streamlit Cloud:**
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub repo
+   - Add the token to Secrets
+
+3. **Note:** Instagram links won't work on cloud (use file upload)
+
+---
+
+Made with ❤️ | Free to use and modify
