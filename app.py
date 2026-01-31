@@ -24,14 +24,28 @@ st.title("🚀 Insta to YouTube Shorts Bot")
 # LOGIC
 # ===============================
 def download_video(insta_url):
-    st.info("Downloading video...")
-    subprocess.run([
+    # Delete old video if it exists
+    if os.path.exists("video.mp4"):
+        try:
+            os.remove("video.mp4")
+            st.info("Removed old video...")
+        except:
+            pass
+    
+    st.info("Downloading new video...")
+    result = subprocess.run([
         "yt-dlp",
         "-f", "mp4",
         "-o", "video.mp4",
         insta_url
-    ])
-    st.success("Video downloaded!")
+    ], capture_output=True, text=True)
+    
+    if result.returncode == 0:
+        st.success("Video downloaded!")
+        return True
+    else:
+        st.error(f"Download failed: {result.stderr}")
+        return False
 
 def get_authenticated_service():
     # 1. Try to load from Streamlit Secrets (Best for Cloud)
@@ -82,7 +96,7 @@ def get_authenticated_service():
 def upload_to_youtube(video_title):
     youtube = get_authenticated_service()
     if not youtube:
-        return
+        return False
 
     st.info("Uploading to YouTube...")
     try:
@@ -104,8 +118,18 @@ def upload_to_youtube(video_title):
         st.balloons()
         st.success(f"✅ Upload Complete: {video_title}")
         st.json(response)
+        
+        # Clean up the video file after successful upload
+        try:
+            os.remove("video.mp4")
+            st.info("Cleaned up video file.")
+        except:
+            pass
+        
+        return True
     except Exception as e:
         st.error(f"Upload failed: {e}")
+        return False
 
 # ===============================
 # UI
@@ -115,7 +139,13 @@ video_title_input = st.text_input("📝 Enter YouTube title")
 
 if st.button("🚀 Run Automation"):
     if insta_link and video_title_input:
-        download_video(insta_link)
-        upload_to_youtube(video_title_input)
+        # Download video first
+        download_success = download_video(insta_link)
+        
+        # Only upload if download was successful
+        if download_success:
+            upload_to_youtube(video_title_input)
+        else:
+            st.error("Cannot upload - download failed!")
     else:
         st.warning("Please fill in both fields!")
